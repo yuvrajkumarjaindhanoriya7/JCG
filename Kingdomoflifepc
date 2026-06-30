@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Kingdom of Life - PC Edition</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
+        body { font-family: monospace; background: #121212; color: #fff; overflow: hidden; width: 100vw; height: 100vh; display: flex; flex-direction: column; }
+        #game-header { background: rgba(0,0,0,0.9); padding: 10px; display: flex; justify-content: space-between; border-bottom: 2px solid #333; font-size: 12px; }
+        #quest-bar { background: #2c2c2e; padding: 8px; font-size: 12px; color: #ffcc00; text-align: center; border-bottom: 1px solid #444; }
+        
+        #main-container { flex: 1; display: flex; position: relative; overflow: hidden; }
+        #canvas-container { flex: 3; position: relative; background: #1e46a3; height: 100%; }
+        canvas { display: block; width: 100%; height: 100%; cursor: crosshair; }
+        
+        #history-ledger-panel { flex: 1; background: #18181a; border-left: 2px solid #333; display: flex; flex-direction: column; height: 100%; }
+        .ledger-title { background: #222; padding: 10px; font-size: 13px; font-weight: bold; color: #44ff44; border-bottom: 1px solid #333; text-align: center; }
+        #ledger-content { flex: 1; padding: 10px; overflow-y: auto; font-size: 11px; line-height: 1.5; color: #ddd; user-select: text; }
+        .ledger-entry { margin-bottom: 8px; border-bottom: 1px dashed #2c2c2e; padding-bottom: 4px; }
+        .ledger-time { color: #888; margin-right: 5px; }
+
+        #game-controls { background: #222; padding: 12px; display: flex; gap: 10px; align-items: center; border-top: 2px solid #444; flex-wrap: wrap; }
+        .tool-btn { background: #3a3a3c; color: white; border: 1px solid #555; padding: 8px 14px; border-radius: 4px; font-size: 12px; font-weight: bold; cursor: pointer; }
+        .tool-btn.active { background: #44ff44; color: black; border-color: #44ff44; }
+        .mode-btn { background: #007aff; }
+        .mode-btn.active { background: #ff9500; color: black; }
+        .calamity-btn { background: #a31e1e; }
+        .calamity-btn.active { background: #ff3b30; color: white; box-shadow: 0 0 8px #ff3b30; }
+        .edit-input { background: #333; color: #fff; border: 1px solid #555; padding: 6px; border-radius: 4px; font-size: 12px; width: 110px; user-select: text; }
+        #weather-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; mix-blend-mode: screen; }
+    </style>
+</head>
+<body>
+
+    <div id="game-header">
+        <div>⏳ <span id="time-display">Day 1 (00:00)</span> | <span id="mode-display">MODE: SPECTATOR</span></div>
+        <div>📜 <span id="era-display">Environment: Stable</span> | <span id="inventory-display">Wood: 0 | Food: 0 | Gold: 0</span></div>
+    </div>
+
+    <div id="quest-bar">🌋 KINGDOM OF LIFE CALAMITIES: Unleash Earthquakes, Tsunamis, Thunderstorms, Rain, Floods, or Droughts!</div>
+
+    <div id="main-container">
+        <div id="canvas-container">
+            <canvas id="gameCanvas"></canvas>
+            <canvas id="weather-overlay"></canvas>
+        </div>
+        
+        <div id="history-ledger-panel">
+            <div class="ledger-title">📜 KINGDOM OF LIFE CHRONICLES</div>
+            <div id="ledger-content">
+                <div class="ledger-entry"><span class="ledger-time">[Yr 0, Day 1]</span> Kingdom of Life sandbox generated. Life forces aligning.</div>
+            </div>
+        </div>
+    </div>
+
+    <div id="game-controls">
+        <button id="mode-spec" class="tool-btn mode-btn active" onclick="setGameMode('spectator')">👁️ Spectator</button>
+        <button id="mode-control" class="tool-btn mode-btn" onclick="setGameMode('control')">🎮 Spec-Control</button>
+        <button class="tool-btn" style="background: #a31ea3;" onclick="triggerTimeLapse()">⏳ 100-Yr Time-Lapse</button>
+        
+        <div id="tools-spectator" style="display: flex; gap: 6px;">
+            <button id="tool-human" class="tool-btn active" onclick="setTool('human')">👥 + Human</button>
+            <button id="tool-animal" class="tool-btn" onclick="setTool('animal')">🦁 + Predator</button>
+        </div>
+
+        <div id="tools-calamity" style="display: flex; gap: 4px; border-left: 2px solid #444; padding-left: 6px; flex-wrap: wrap;">
+            <button id="tool-earthquake" class="tool-btn calamity-btn" onclick="setTool('earthquake')">🌋 Earthquake</button>
+            <button id="tool-tsunami" class="tool-btn calamity-btn" onclick="setTool('tsunami')">🌊 Tsunami</button>
+            <button id="tool-thunderstorm" class="tool-btn calamity-btn" onclick="setTool('thunderstorm')">⚡ Lightning Bolt</button>
+            <button id="tool-rain" class="tool-btn calamity-btn" onclick="setTool('rain')">🌧️ Toggle Rain</button>
+            <button id="tool-flood" class="tool-btn calamity-btn" onclick="setTool('flood')">🌊 Trigger Flood</button>
+            <button id="tool-drought" class="tool-btn calamity-btn" onclick="setTool('drought')">🏜️ Cause Drought</button>
+        </div>
+
+        <div id="editor-panel" style="display: none; gap: 6px; background: #2c2c2e; padding: 4px; border-radius: 4px;">
+            <input type="text" id="edit-first-name" class="edit-input" placeholder="Name" oninput="updateSelectedIdentity()">
+            <input type="text" id="edit-kingdom" class="edit-input" placeholder="Kingdom" oninput="updateSelectedIdentity()">
+        </div>
+
+        <div id="tools-control" style="display: none; gap: 6px;">
+            <button class="tool-btn" style="background:#555;" onclick="triggerDirectAction('interact')">⛏️ Gather</button>
+            <button class="tool-btn" style="background:#d4af37;" onclick="triggerDirectAction('ascend')">✨ Grant Divinity</button>
+            <button class="tool-btn" style="background:#008080;" onclick="triggerDirectAction('conquer')">🗺️ Claim Land</button>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas'); const ctx = canvas.getContext('2d');
+        const wCanvas = document.getElementById('weather-overlay'); const wCtx = wCanvas.getContext('2d');
+        
+        let gameMode = 'spectator', currentTool = 'human', gameDays = 1, gameMinutes = 0, gameYears = 0;
+        let entities = [], landMasses = [], resourceNodes = [], monuments = [], disasterAnims = [];
+        let globalInventory = { wood: 0, food: 0, gold: 0 };
+        let controlledEntity = null;
+        
+        let isRaining = false, isFlooded = false, seaLevelOffset = 0;
+
+        const FIRST_NAMES = ["Arjun", "John", "Dmitry", "Hans", "Kwame", "Mateo", "Priya", "Emma"];
+        const SURNAMES = ["Sharma", "Smith", "Ivanov", "Müller", "Mensa", "Silva"];
+
+        function recordHistoryEvent(text) {
+            const ledger = document.getElementById('ledger-content');
+            const entry = document.createElement('div');
+            entry.className = 'ledger-entry';
+            entry.innerHTML = `<span class="ledger-time">[Yr ${gameYears}, Day ${gameDays}]</span> ${text}`;
+            ledger.appendChild(entry);
+            ledger.scrollTop = ledger.scrollHeight;
+        }
+
+        function setGameMode(mode) {
+            gameMode = mode;
+            document.getElementById('mode-spec').classList.toggle('active', mode === 'spectator');
+            document.getElementById('mode-control').classList.toggle('active', mode === 'control');
+            document.getElementById('tools-spectator').style.display = mode === 'spectator' ? 'flex' : 'none';
+            document.getElementById('tools-control').style.display = mode === 'control' ? 'flex' : 'none';
+            if (mode === 'spectator') { controlledEntity = null; document.getElementById('editor-panel').style.display = 'none'; }
+            document.getElementById('mode-display').innerText = `MODE: ${mode.toUpperCase()}`;
+        }
+
+        function setTool(tool) {
+            if(tool === 'rain') {
+                isRaining = !isRaining;
+                document.getElementById('tool-rain').classList.toggle('active', isRaining);
+                recordHistoryEvent(isRaining ? "🌧️ ENVIRONMENT: A dark downpour sweeps over the Kingdom of Life." : "☀️ ENVIRONMENT: The rain clears away from the Kingdom.");
+                return;
+            }
+            if(tool === 'flood') {
+                isFlooded = !isFlooded;
+                seaLevelOffset = isFlooded ? 25 : 0;
+                document.getElementById('tool-flood').classList.toggle('active', isFlooded);
+                recordHistoryEvent(isFlooded ? "🌊 CALAMITY: Sea levels rise! Massive flood initiated in the Kingdom of Life." : "🌊 ENVIRONMENT: Floodwaters begin to recede.");
+                return;
+            }
+            if(tool === 'drought') {
+                resourceNodes = [];
+                recordHistoryEvent("🏜️ CALAMITY: An extreme drought withers all raw food and vegetation in the Kingdom of Life!");
+                return;
+            }
+
+            currentTool = tool;
+            document.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('active'));
+            if(isRaining) document.getElementById('tool-rain').classList.add('active');
+            if(isFlooded) document.getElementById('tool-flood').classList.add('active');
+            
+            const targetBtn = document.getElementById(`tool-${tool}`);
+            if(targetBtn) targetBtn.classList.add('active');
+        }
+
+        function triggerTimeLapse() {
+            let humans = entities.filter(e => e.type === 'human' && e.isAlive);
+            if (humans.length < 3) {
+                recordHistoryEvent("⚠️ Time-Lapse failed: Not enough alive humans in the Kingdom of Life.");
+                return;
+            }
+            gameYears += 100;
+            let naturalPassings = humans.length;
+            entities = entities.filter(e => e.type !== 'human'); 
+
+            let newSpawns = Math.floor(Math.random() * 15) + 10;
+            for(let i = 0; i < newSpawns; i++) {
+                entities.push(new Entity('human', Math.random() * canvas.width, Math.random() * canvas.height));
+            }
+            recordHistoryEvent(`⏳ 100 Years pass in the Kingdom of Life! ${naturalPassings} humans passed away. ${newSpawns} descendants arrived.`);
+        }
+
+        function resizeCanvas() {
+            canvas.width = canvas.parentElement.clientWidth; canvas.height = canvas.parentElement.clientHeight;
+            wCanvas.width = canvas.width; wCanvas.height = canvas.height;
+            landMasses = [
+                { x: canvas.width*0.05, y: canvas.height*0.1, w: canvas.width*0.35, h: canvas.height*0.4, name: "Gondwana", claimedBy: "None" },
+                { x: canvas.width*0.55, y: canvas.height*0.4, w: canvas.width*0.38, h: canvas.height*0.45, name: "Laurasia", claimedBy: "None" }
+            ];
+            spawnResources();
+        }
+
+        function spawnResources() {
+            if (isFlooded) return;
+            landMasses.forEach(l => {
+                for(let i=0; i<2; i++) {
+                    resourceNodes.push({ x: l.x + Math.random()*l.w, y: l.y + Math.random()*l.h, type: 'food', color: '#ff4444' });
+                }
+            });
+        }
+
+        class Entity {
+            constructor(type, x, y) {
+                this.type = type; this.x = x; this.y = y; this.isAlive = true;
+                this.heading = Math.random() * Math.PI * 2;
+                this.clothingColor = `hsl(${Math.random() * 360}, 70%, 50%)`;
+                this.firstName = FIRST_NAMES[Math.floor(Math.random() * FIRST_NAMES.length)];
+                this.lastName = SURNAMES[Math.floor(Math.random() * SURNAMES.length)];
+                this.kingdom = type === 'human' ? "Tribal" : "Wild";
+                this.isDivine = false; this.role = "Citizen";
+                this.age = Math.floor(Math.random() * 25) + 1;
+                this.drownTimer = 0;
+            }
+            update() {
+                if (!this.isAlive) return;
+                if (this.type === 'human' && Math.random() > 0.999) {
+                    this.age++;
+                    if(this.age > 80 && !this.isDivine) {
+                        this.isAlive = false;
+                        recordHistoryEvent(`💀 Death: ${this.firstName} died of old age at ${this.age}.`);
+                        return;
+                    }
+                }
+                if (this === controlledEntity) return;
+
+                this.x += Math.cos(this.heading) * 1.1; this.y += Math.sin(this.heading) * 1.1;
+                if (Math.random() > 0.97) this.heading += (Math.random() - 0.5) * 1.5;
+
+                let isOnLand = landMasses.some(l => 
+                    this.x >= (l.x + seaLevelOffset) && this.x <= (l.x + l.w - seaLevelOffset) && 
+                    this.y >= (l.y + seaLevelOffset) && this.y <= (l.y + l.h - seaLevelOffset)
+                );
+
+                if (!isOnLand && !this.isDivine) {
+                    this.drownTimer++;
+                    if(this.drownTimer > (isFlooded ? 120 : 300)) {
+                        this.isAlive = false;
+                        recordHistoryEvent(`🌊 Drowned: ${this.firstName} swallowed by water depths.`);
+                    }
+                } else { this.drownTimer = 0; }
+            }
+            draw() {
+                if (!this.isAlive) { ctx.fillStyle = '#555'; ctx.fillRect(this.x-3, this.y-2, 6, 4); return; }
+                ctx.save(); ctx.translate(this.x, this.y);
+                ctx.fillStyle = this.type === 'human' ? this.clothingColor : '#ff9500';
+                if (this.isDivine) ctx.fillStyle = '#fff700';
+                ctx.fillRect(-5, -5, 10, 10);
+                ctx.fillStyle = '#fff'; ctx.font = '9px monospace'; 
+                if(this.type === 'human') ctx.fillText(this.isDivine ? `😇 ${this.firstName}` : `${this.firstName}`, -15, -10);
+                ctx.restore();
+            }
+        }
+
+        canvas.addEventListener('click', function(e) {
+            const rect = canvas.getBoundingClientRect();
+            const tx = e.clientX - rect.left, ty = e.clientY - rect.top;
+            
+            if(['earthquake', 'tsunami', 'thunderstorm'].includes(currentTool)) {
+                disasterAnims.push({ x: tx, y: ty, radius: 5, maxRadius: 80, type: currentTool });
+                let deaths = 0;
+                entities.forEach(ent => {
+                    if(ent.isAlive && !ent.isDivine && Math.hypot(ent.x - tx, ent.y - ty) < 80) {
+                        ent.isAlive = false; deaths++;
+                    }
+                });
+                recordHistoryEvent(`⚡ CALAMITY: Triggered ${currentTool.toUpperCase()} strike, claiming ${deaths} victims.`);
+                return;
+            }
+
+            if (gameMode === 'spectator' && ['human', 'animal'].includes(currentTool)) {
+                entities.push(new Entity(currentTool, tx, ty));
+            }
+        });
+
+        function triggerDirectAction(action) {
+            if (!controlledEntity || !controlledEntity.isAlive) return;
+            if (action === 'ascend' && controlledEntity.type === 'human') {
+                controlledEntity.isDivine = true;
+                let name = controlledEntity.firstName;
+                monuments.push({ x: controlledEntity.x - 20, y: controlledEntity.y, type: '⛩️', label: `${name}'s Gate` });
+                monuments.push({ x: controlledEntity.x + 20, y: controlledEntity.y, type: '🗿', label: `${name}'s Pillar` });
+                recordHistoryEvent(`✨ ASCENSION: Shrines built for God ${name} in the Kingdom of Life.`);
+            }
+        }
+
+        function drawWeather() {
+            wCtx.clearRect(0, 0, wCanvas.width, wCanvas.height);
+            if (isRaining) {
+                wCtx.strokeStyle = 'rgba(174, 219, 255, 0.4)'; wCtx.lineWidth = 1.5;
+                for (let i = 0; i < 40; i++) {
+                    let rx = Math.random() * wCanvas.width; let ry = Math.random() * wCanvas.height;
+                    wCtx.beginPath(); wCtx.moveTo(rx, ry); wCtx.lineTo(rx - 5, ry + 25); wCtx.stroke();
+                }
+            }
+        }
+
+        function loop() {
+            gameMinutes += 4; if (gameMinutes >= 1440) { gameDays++; gameMinutes = 0; if(Math.random() > 0.7) spawnResources(); }
+            let h = String(Math.floor(gameMinutes/60)).padStart(2, '0'), m = String(gameMinutes%60).padStart(2, '0');
+            document.getElementById('time-display').innerText = `Day ${gameDays} (${h}:${m})`;
+            
+            ctx.fillStyle = isFlooded ? '#0e2b66' : '#1e46a3'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            ctx.fillStyle = '#4e9258'; 
+            landMasses.forEach(l => { 
+                ctx.fillRect(l.x + seaLevelOffset, l.y + seaLevelOffset, l.w - (seaLevelOffset*2), l.h - (seaLevelOffset*2)); 
+            });
+            
+            monuments.forEach(m => {
+                ctx.fillStyle = "#fff"; ctx.font = "14px sans-serif"; ctx.fillText(m.type, m.x, m.y);
+                ctx.font = "8px monospace"; ctx.fillStyle = "#ffcc00"; ctx.fillText(m.label, m.x - 20, m.y + 12);
+            });
+
+            resourceNodes.forEach(n => { ctx.fillStyle = n.color; ctx.beginPath(); ctx.arc(n.x, n.y, 4, 0, Math.PI*2); ctx.fill(); });
+            entities.forEach(ent => { ent.update(); ent.draw(); });
+            
+            disasterAnims.forEach((d, idx) => {
+                d.radius += 4;
+                ctx.strokeStyle = d.type === 'thunderstorm' ? '#fffb00' : (d.type === 'earthquake' ? '#ff4500' : '#ffffff');
+                ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(d.x, d.y, d.radius, 0, Math.PI*2); ctx.stroke();
+                if(d.radius >= d.maxRadius) disasterAnims.splice(idx, 1);
+            });
+
+            drawWeather();
+            requestAnimationFrame(loop);
+        }
+
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas(); requestAnimationFrame(loop);
+    </script>
+</body>
+</html>
