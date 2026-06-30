@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jain Cloud Gaming</title>
+    <style>
+        :root {
+            --primary-color: #6366f1;
+            --background-color: #0f172a;
+            --card-color: #1e293b;
+            --text-color: #f8fafc;
+            --accent-color: #10b981;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--background-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        header {
+            width: 100%;
+            padding: 2rem 0;
+            text-align: center;
+            background: linear-gradient(180deg, #1e1b4b 0%, var(--background-color) 100%);
+        }
+
+        h1 {
+            margin: 0;
+            font-size: 3rem;
+            letter-spacing: 2px;
+            color: #fff;
+            text-shadow: 0 0 10px rgba(99, 102, 241, 0.5);
+        }
+
+        .tagline {
+            color: #94a3b8;
+            font-size: 1.2rem;
+            margin-top: 0.5rem;
+        }
+
+        main {
+            max-width: 800px;
+            width: 90%;
+            margin: 3rem auto;
+            text-align: center;
+        }
+
+        .featured-card {
+            background-color: var(--card-color);
+            border-radius: 16px;
+            padding: 2.5rem;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
+            border: 1px solid #334155;
+            transition: transform 0.3s ease;
+        }
+
+        .featured-card:hover {
+            transform: translateY(-5px);
+        }
+
+        .game-title {
+            font-size: 2rem;
+            margin-top: 0;
+            color: var(--accent-color);
+        }
+
+        .game-desc {
+            color: #cbd5e1;
+            font-size: 1.1rem;
+            line-height: 1.6;
+            margin-bottom: 2rem;
+        }
+
+        .play-btn {
+            display: inline-block;
+            background-color: var(--primary-color);
+            color: white;
+            text-decoration: none;
+            padding: 1rem 2.5rem;
+            font-size: 1.2rem;
+            font-weight: bold;
+            border-radius: 8px;
+            transition: all 0.2s ease;
+            box-shadow: 0 4px 14px 0 rgba(99, 102, 241, 0.4);
+        }
+
+        .play-btn:hover {
+            background-color: #4f46e5;
+            transform: scale(1.05);
+            box-shadow: 0 6px 20px 0 rgba(99, 102, 241, 0.6);
+        }
+
+        footer {
+            margin-top: auto;
+            padding: 2rem;
+            color: #64748b;
+            font-size: 0.9rem;
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>JAIN CLOUD GAMING</h1>
+        <p class="tagline">Next-Gen Gaming, Streamed Instantly.</p>
+    </header>
+
+    <main>
+        <div class="featured-card">
+            <h2 class="game-title">Kingdoms of Life</h2>
+            <p class="game-desc">
+                Dive into an immersive world where nature and strategy collide. Build your civilization, protect your ecosystems, and lead your kingdom to absolute prosperity. No downloads required—stream it instantly in high definition.
+            </p>
+            <a href="#" class="play-btn">Play Now</a>
+        </div>
+    </main>
+
+    <footer>
+        &copy; 2026 Jain Cloud Gaming. All rights reserved.
+    </footer>
+
+</body>
+</html>
