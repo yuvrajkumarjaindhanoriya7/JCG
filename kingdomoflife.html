@@ -1,1 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Kingdom of Life - Mobile Edition</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; -webkit-user-select: none; }
+        body { font-family: -apple-system, sans-serif; background: #121212; color: #fff; overflow: hidden; width: 100vw; height: 100vh; display: flex; flex-direction: column; }
+        
+        #tab-bar { display: flex; background: #000; border-bottom: 1px solid #333; }
+        .tab-btn { flex: 1; padding: 12px; text-align: center; color: #aaa; background: #111; border: none; font-size: 13px; font-weight: bold; }
+        .tab-btn.active { color: #44ff44; background: #222; border-bottom: 2px solid #44ff44; }
+
+        .screen-view { display: none; flex: 1; flex-direction: column; overflow: hidden; position: relative; }
+        .screen-view.active { display: flex; }
+
+        #canvas-container { flex: 1; background: #1e46a3; position: relative; }
+        canvas { display: block; width: 100%; height: 100%; }
+        
+        #ledger-screen { background: #151517; padding: 12px; overflow-y: auto; height: 100%; user-select: text; -webkit-user-select: text; }
+        .m-entry { font-size: 12px; padding: 6px; border-bottom: 1px dashed #2c2c2e; line-height: 1.4; }
+        .m-stamp { color: #ffcc00; margin-right: 4px; }
+
+        #game-controls { background: #222; padding: 6px; display: flex; flex-direction: column; gap: 6px; }
+        .btn-group { display: flex; gap: 4px; overflow-x: auto; padding-bottom: 2px; }
+        .touch-btn { background: #3a3a3c; color: white; border: none; padding: 10px 14px; border-radius: 6px; font-size: 11px; font-weight: bold; white-space: nowrap; }
+        .touch-btn.active { background: #44ff44; color: black; }
+        .cal-b { background: #6e1a1a; }
+    </style>
+</head>
+<body>
+
+    <div id="tab-bar">
+        <button id="btn-tab-world" class="tab-btn active" onclick="switchTab('world')">🌍 Engine Room</button>
+        <button id="btn-tab-ledger" class="tab-btn" onclick="switchTab('ledger')">📜 Ledger Records</button>
+    </div>
+
+    <div id="screen-world" class="screen-view active">
+        <div id="canvas-container">
+            <canvas id="gameCanvas"></canvas>
+        </div>
+    </div>
+
+    <div id="screen-ledger" class="screen-view">
+        <div id="ledger-screen">
+            <div class="m-entry"><span class="m-stamp">[Yr 0]</span> Kingdom of Life initiated. Trigger catastrophes below to view entries.</div>
+        </div>
+    </div>
+
+    <div id="game-controls">
+        <div class="btn-group">
+            <button id="mode-spec" class="touch-btn active" onclick="setMode('spectator')">👁️ Spec</button>
+            <button id="mode-control" class="touch-btn" onclick="setMode('control')">🎮 Ctrl</button>
+            <button class="touch-btn" style="background:#a31ea3;" onclick="triggerMobileLapse()">⚡ Lapse 100y</button>
+        </div>
+        <div class="btn-group" style="overflow-x: auto;">
+            <button id="tool-human" class="touch-btn active" onclick="setTool('human')">+ Human</button>
+            <button id="tool-quake" class="touch-btn cal-b" onclick="setTool('quake')">🌋 Quake</button>
+            <button id="tool-bolt" class="touch-btn cal-b" onclick="setTool('bolt')">⚡ Lightning</button>
+            <button id="tool-rain" class="touch-btn cal-b" onclick="setTool('rain')">🌧️ Rain</button>
+            <button id="tool-flood" class="touch-btn cal-b" onclick="setTool('flood')">🌊 Flood</button>
+            <button id="tool-drought" class="touch-btn cal-b" onclick="setTool('drought')">🏜️ Drought</button>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas'), ctx = canvas.getContext('2d');
+        let gameMode = 'spectator', currentTool = 'human', entities = [], landMasses = [], monuments = [], disasterAnims = [], gameYears = 0;
+        let isRaining = false, isFlooded = false, floodOffset = 0;
+
+        function switchTab(target) {
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('.screen-view').forEach(s => s.classList.remove('active'));
+            document.getElementById(`btn-tab-${target}`).classList.add('active');
+            document.getElementById(`screen-${target}`).classList.add('active');
+            if(target === 'world') resize();
+        }
+
+        function logMobileEvent(msg) {
+            const container = document.getElementById('ledger-screen');
+            const row = document.createElement('div'); row.className = 'm-entry';
+            row.innerHTML = `<span class="m-stamp">[Yr ${gameYears}]</span> ${msg}`;
+            container.appendChild(row); container.scrollTop = container.scrollHeight;
+        }
+
+        function setMode(m) {
+            gameMode = m;
+            document.getElementById('mode-spec').classList.toggle('active', m === 'spectator');
+            document.getElementById('mode-control').classList.toggle('active', m === 'control');
+        }
+
+        function setTool(t) {
+            if(t === 'rain') { isRaining = !isRaining; logMobileEvent(isRaining ? "🌧️ Downpour active in Kingdom of Life." : "☀️ Sun returns."); return; }
+            if(t === 'flood') { isFlooded = !isFlooded; floodOffset = isFlooded ? 20 : 0; logMobileEvent(isFlooded ? "🌊 Global flood active in Kingdom." : "🌊 Waters clear."); return; }
+            if(t === 'drought') { entities = entities.filter(e => e.type === 'human'); logMobileEvent("🏜️ Drought struck Kingdom landscapes."); return; }
+
+            currentTool = t;
+            document.querySelectorAll('.touch-btn').forEach(b => b.classList.remove('active'));
+            document.getElementById(`tool-${t}`).classList.add('active');
+        }
+
+        function triggerMobileLapse() {
+            gameYears += 100; entities = [];
+            for(let i=0; i<5; i++) entities.push(new Entity('human', Math.random()*canvas.width, Math.random()*canvas.height));
+            logMobileEvent(`⏳ Simulated 100 years in Kingdom of Life. New generation born.`);
+        }
+
+        function resize() {
+            canvas.width = canvas.parentElement.clientWidth; canvas.height = canvas.parentElement.clientHeight;
+            landMasses = [{ x: canvas.width*0.1, y: canvas.height*0.1, w: canvas.width*0.8, h: canvas.height*0.7 }];
+        }
+
+        class Entity {
+            constructor(type, x, y) {
+                this.type = type; this.x = x; this.y = y; this.isAlive = true;
+                this.heading = Math.random() * Math.PI * 2;
+                this.firstName = ["Arjun", "John", "Dmitry", "Hans"][Math.floor(Math.random()*4)];
+                this.age = Math.floor(Math.random()*20)+1; this.drownTrack = 0;
+            }
+            update() {
+                this.x += Math.cos(this.heading) * 1.3; this.y += Math.sin(this.heading) * 1.3;
+                if (Math.random() > 0.95) this.heading += (Math.random() - 0.5) * 2;
+
+                let safe = landMasses.some(l => this.x >= l.x+floodOffset && this.x <= l.x+l.w-floodOffset && this.y >= l.y+floodOffset && this.y <= l.y+l.h-floodOffset);
+                if(!safe) {
+                    this.drownTrack++;
+                    if(this.drownTrack > 150) { this.isAlive = false; }
+                } else { this.drownTrack = 0; }
+            }
+            draw() {
+                if(!this.isAlive) return;
+                ctx.fillStyle = "#00ff00"; ctx.fillRect(this.x-5, this.y-5, 10, 10);
+            }
+        }
+
+        canvas.addEventListener('touchstart', function(e) {
+            const rect = canvas.getBoundingClientRect();
+            const tx = e.touches[0].clientX - rect.left, ty = e.touches[0].clientY - rect.top;
+            
+            if(['quake', 'bolt'].includes(currentTool)) {
+                disasterAnims.push({ x: tx, y: ty, radius: 5, maxRadius: 50 });
+                entities.forEach(ent => { if(Math.hypot(ent.x - tx, ent.y - ty) < 50) ent.isAlive = false; });
+                logMobileEvent(`💥 Calamity launched at tap coordinate.`);
+                return;
+            }
+            if (gameMode === 'spectator') entities.push(new Entity('human', tx, ty));
+        });
+
+        function loop() {
+            ctx.fillStyle = '#1e46a3'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = '#4e9258'; landMasses.forEach(l => ctx.fillRect(l.x+floodOffset, l.y+floodOffset, l.w-(floodOffset*2), l.h-(floodOffset*2)));
+            
+            entities = entities.filter(e => e.isAlive);
+            entities.forEach(ent => { ent.update(); ent.draw(); });
+
+            disasterAnims.forEach((d, i) => {
+                d.radius += 3; ctx.strokeStyle = 'yellow'; ctx.beginPath(); ctx.arc(d.x, d.y, d.radius, 0, Math.PI*2); ctx.stroke();
+                if(d.radius >= d.maxRadius) disasterAnims.splice(i, 1);
+            });
+
+            requestAnimationFrame(loop);
+        }
+
+        window.addEventListener('resize', resize);
+        resize(); requestAnimationFrame(loop);
+    </script>
+</body>
+</html>
  
